@@ -12,6 +12,7 @@ from abuseACL.structures.ADObject.ADComputer import ADComputer
 from abuseACL.structures.ADObject.ADGroup import ADGroup
 from abuseACL.structures.ADObject.ADUser import ADUser
 from abuseACL.structures.ADObject.ADGPO import ADGPO
+from abuseACL.structures.ADObject.ADOU import ADOU
 from abuseACL.network.Kerberos import Kerberos
 from abuseACL.core.Logger import Logger
 
@@ -22,6 +23,7 @@ class LDAP:
     computers = list()
     certificatesTemplates = list()
     gpos = list()
+    ous = list()
 
     def __init__(self, forest: str, target: Target, credentials: Credentials, logger: Logger) -> None:
         self.target         = target
@@ -262,3 +264,18 @@ class LDAP:
         self.gpos = self.__createArrayOfObject(response, ADGPO)
 
         return self.gpos
+
+    def getAllOUs(self) -> List[ADGPO]:
+        if len(self.ous):
+            return self.ous
+
+        response = self.search(
+            self.defaultNamingContext,
+            "(objectClass=organizationalUnit)",
+            ldap3.SUBTREE,
+            ["DistinguishedName", "name", "ntSecurityDescriptor"]
+        )
+
+        self.ous = self.__createArrayOfObject(response, ADOU)
+
+        return self.ous

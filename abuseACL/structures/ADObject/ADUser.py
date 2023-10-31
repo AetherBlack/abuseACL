@@ -21,3 +21,5 @@ class ADUser(ADObject):
 
             if user.sAMAccountName == username:
                 return user.objectSid
+
+        return None

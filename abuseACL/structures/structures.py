@@ -25,6 +25,8 @@ class ACCESS_MASK(Enum):
     # Combination of write permissions (Self, WriteProperty) among other things.
     GENERIC_WRITE           = 0x40000000
 
+    FULL_CONTROL            = 0x000f01ff
+
 
 class RIGHTS_GUID(Enum):
     # Edit the "member" attribute of the object.

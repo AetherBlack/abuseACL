@@ -9,3 +9,13 @@ class ADGroup(ADObject):
         self.sAMAccountName         = sAMAccountName[0].decode()
         self.objectSid              = self.convertSid(objectSid[0])
         self.nTSecurityDescriptor   = self.parseSecurityDescriptor(nTSecurityDescriptor[0])
+
+    @staticmethod
+    def getGroupSid(groups: list, groupname: str) -> str:
+        for group in groups:
+            group: ADGroup
+
+            if group.sAMAccountName == groupname:
+                return group.objectSid
+
+        return None

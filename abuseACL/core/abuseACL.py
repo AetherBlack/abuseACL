@@ -3,6 +3,8 @@ from impacket.ldap.ldaptypes import ACCESS_ALLOWED_ACE, ACCESS_ALLOWED_OBJECT_AC
 from impacket.uuid import bin_to_string
 
 from abuseACL.structures.structures import ACCESS_MASK, RIGHTS_GUID
+from abuseACL.structures.ADObject.ADComputer import ADComputer
+from abuseACL.structures.ADObject.ADGroup import ADGroup
 from abuseACL.structures.ADObject.ADUser import ADUser
 from abuseACL.structures.ADObject import ADObject
 from abuseACL.network.LDAP import LDAP
@@ -19,8 +21,10 @@ class abuseACL:
         self.computers              = self.ldap.getAllComputers()
         self.certificatesTemplates  = self.ldap.getAllCertificatesTemplates()
         self.gpos                   = self.ldap.getAllGPOs()
+        self.ous                    = self.ldap.getAllOUs()
 
-        self.allObjects = self.users + self.groups + self.computers + self.certificatesTemplates + self.gpos
+        self.allObjects = self.users + self.groups + self.computers + \
+            self.certificatesTemplates + self.gpos + self.ous
 
     def isObjectTypeGUIDRestricted(self, ace) -> RIGHTS_GUID:
         isDangerous = self.isObjectTypeGUIDDangerous(ace)
@@ -49,13 +53,23 @@ class abuseACL:
 
         return False
 
-    def abuse(self, username: str) -> None:
+    def abuse(self, principalName: str) -> None:
         """
         crossDomain possible check with another forest.
         Check if the user is the owner of another user, group, computer, certificateTemplate, gpo
         Check if the user have dangerous write on another user, (group, Self the user can add itself to the group), computer, certificateTemplate, gpo
         """
-        userSid = ADUser.getUserSid(self.users, username)
+        principalSid = ADUser.getUserSid(self.users, principalName)
+        if principalSid is None:
+            principalSid = ADGroup.getGroupSid(self.groups, principalName)
+        if principalName is None:
+            principalSid = ADComputer.getComputerSid(self.computers, principalName)
+
+        if principalName is None:
+            self.logger.error(f"Can't find principal with name {principalName}")
+            exit(1)
+        
+        self.logger.debug(f"SID of the principal: {principalSid}")
 
         for entry in self.allObjects:
             entry: ADObject
@@ -64,8 +78,8 @@ class abuseACL:
 
             securityDescriptor = entry.nTSecurityDescriptor
 
-            if userSid == securityDescriptor["OwnerSid"].formatCanonical():
-                self.logger.vuln(f"{username} is the owner of {entry.sAMAccountName}")
+            if principalSid == securityDescriptor["OwnerSid"].formatCanonical():
+                self.logger.vuln(f"{principalName} is the owner of {entry.sAMAccountName}")
 
             # ACE in ACL
             for ace in securityDescriptor["Dacl"].aces:
@@ -73,7 +87,7 @@ class abuseACL:
                 # Only check ALLOW
                 if ace["Ace"].ACE_TYPE in [ACCESS_ALLOWED_ACE.ACE_TYPE, ACCESS_ALLOWED_OBJECT_ACE.ACE_TYPE]:
                     # Only check concerned user
-                    if userSid != ace["Ace"]["Sid"].formatCanonical():
+                    if principalSid != ace["Ace"]["Sid"].formatCanonical():
                         continue
 
                     for perm in ACCESS_MASK:
@@ -81,14 +95,14 @@ class abuseACL:
                         if not (ace["Ace"]["Mask"].hasPriv(perm.value)):
                             continue
 
-                        vuln = f"{username} can do {perm.name} on {entry.sAMAccountName}"
+                        vuln = f"{principalName} can do {perm.name} on {entry.sAMAccountName}"
                         right = False
 
                         # Edit one of the object's attributes. The attribute is referenced by an "ObjectType GUID".
                         if perm.name  == ACCESS_MASK.WRITE_PROPERTIES.name:
                             right = self.isObjectTypeGUIDDangerous(ace)
                             if right:
-                                vuln = f"{username} can do {perm.name}:{right} on {entry.sAMAccountName}"
+                                vuln = f"{principalName} can do {perm.name}:{right} on {entry.sAMAccountName}"
                             else:
                                 # Debug, in case it is useful, (No vulnerability)
                                 self.logger.debug(vuln)
@@ -98,7 +112,7 @@ class abuseACL:
                         elif perm.name == ACCESS_MASK.ALL_EXTENDED_RIGHTS.name:
                             right = self.isObjectTypeGUIDRestricted(ace)
                             if right:
-                                vuln = f"{username} can do {perm.name}:{right} on {entry.sAMAccountName}"
+                                vuln = f"{principalName} can do {perm.name}:{right} on {entry.sAMAccountName}"
                             else:
                                 # Debug, in case it is useful, (No vulnerability)
                                 self.logger.debug(vuln)
@@ -108,7 +122,7 @@ class abuseACL:
                             self.logger.vuln(f"Result for {entry.sAMAccountName} ({entry.distinguishedName})")
                             self.logger.vuln(f"    ACE Type           : {ace['Ace'].__class__.__name__}")
                             self.logger.vuln(f"    Access mask        : {perm.name}")
-                            self.logger.vuln(f"    Principal (SID)    : {username} ({userSid})")
+                            self.logger.vuln(f"    Principal (SID)    : {principalName} ({principalSid})")
 
                             if right:
                                 # Right and GUID
