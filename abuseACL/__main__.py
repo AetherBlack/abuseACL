@@ -90,11 +90,11 @@ class Arguments:
         
         if self.principalsfile:
             if not os.path.exists(self.principalsfile):
-                Logger().error(f"File {self.principalsfile} doesn't exists")
+                Logger(self.debug, self.ts).error(f"File {self.principalsfile} doesn't exists")
                 exit(1)
-            
+
             if not os.path.isfile(self.principalsfile):
-                Logger().error(f"File {self.principalsfile} is not a file")
+                Logger(self.debug, self.ts).error(f"File {self.principalsfile} is not a file")
                 exit(1)
             
             with open(self.principalsfile) as f:
