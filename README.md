@@ -46,7 +46,20 @@ abuseACL -principal Aether CONTOSO/User:'Password'@dc01.contoso.intra
 abuseACL -principalsfile accounts.txt CONTOSO/User:'Password'@dc01.contoso.intra
 ```
 
-You can then use [dacledit](https://github.com/ThePorgs/impacket/blob/master/examples/dacledit.py) to exploit the ACEs.
+Here is an example of `principalsfile` content:
+
+```
+Administrateur
+Group
+aether
+Machine$
+```
+
+You can look in the documentation of [DACL](https://www.thehacker.recipes/a-d/movement/dacl) to find out how to exploit the rights and use [dacledit](https://github.com/ThePorgs/impacket/blob/master/examples/dacledit.py) to exploit the ACEs.
+
+## How it works
+
+The tool will connect to the DC's LDAP to list users/groups/computers/OU/certificate templates and their nTSecurityDescriptor, which will be parsed to check for vulnerable rights.
 
 ---
 
