@@ -7,7 +7,7 @@ class ADUser(ADObject):
         self.distinguishedName      = distinguishedName[0].decode()
         self.name                   = name[0].decode()
         self.userPrincipalName      = userPrincipalName[0].decode() if len(userPrincipalName) else userPrincipalName
-        self.sAMAccountName         = sAMAccountName[0].decode()
+        self.sAMAccountName         = sAMAccountName[0].decode().lower()
         self.objectSid              = self.convertSid(objectSid[0])
         self.nTSecurityDescriptor   = self.parseSecurityDescriptor(nTSecurityDescriptor[0])
         self.userAccountControl     = int(userAccountControl[0].decode())

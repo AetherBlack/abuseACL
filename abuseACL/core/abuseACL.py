@@ -59,13 +59,15 @@ class abuseACL:
         Check if the user is the owner of another user, group, computer, certificateTemplate, gpo
         Check if the user have dangerous write on another user, (group, Self the user can add itself to the group), computer, certificateTemplate, gpo
         """
+        principalName = principalName.lower()
+
         principalSid = ADUser.getUserSid(self.users, principalName)
         if principalSid is None:
             principalSid = ADGroup.getGroupSid(self.groups, principalName)
         if principalName is None:
             principalSid = ADComputer.getComputerSid(self.computers, principalName)
 
-        if principalName is None:
+        if principalSid is None:
             self.logger.error(f"Can't find principal with name {principalName}")
             exit(1)
         
