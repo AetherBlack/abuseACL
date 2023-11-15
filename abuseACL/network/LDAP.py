@@ -302,7 +302,8 @@ class LDAP:
     def getSchema(self) -> List[ADSchema]:
         if len(self.schema):
             return self.schema
-        
+
+        # Subtree in case it's not inherant
         response = self.search(
             f"CN=Schema,{self.configurationNamingContext}",
             "(objectClass=*)",
