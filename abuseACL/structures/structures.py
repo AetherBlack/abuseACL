@@ -40,9 +40,12 @@ class RIGHTS_GUID(Enum):
     
     # One of the two extended rights needed to operate a DCSync.
     DS_REPLICATION_GET_CHANGES_ALL  = "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2"
-    
+
+    # Can be used to do Shadow Credentials
+    DS_KEY_CREDENTIAL_LINK          = "5b47d60f-6090-40b2-9f37-2a4de88f3063"
+
     # Edit the "servicePrincipalName" attribute of the object.
     VALIDATED_SPN                   = "f3a64788-5306-11d1-a9c5-0000f80367c1"
 
     # All
-    ALL                             = "*"
+    ALL                             = "00000000-0000-0000-0000-000000000000"
