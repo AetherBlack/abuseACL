@@ -8,7 +8,9 @@ from abuseACL.structures.sAMAccountType import sAMAccountType
 from abuseACL.structures.Credentials import Credentials
 from abuseACL.structures.Target import Target
 from abuseACL.structures.ADObject.ADCertificateTemplate import ADCertificateTemplate
+from abuseACL.structures.ADObject.ADAdminSDHolder import ADAdminSDHolder
 from abuseACL.structures.ADObject.ADComputer import ADComputer
+from abuseACL.structures.ADObject.ADSchema import ADSchema
 from abuseACL.structures.ADObject.ADGroup import ADGroup
 from abuseACL.structures.ADObject.ADUser import ADUser
 from abuseACL.structures.ADObject.ADGPO import ADGPO
@@ -24,6 +26,8 @@ class LDAP:
     certificatesTemplates = list()
     gpos = list()
     ous = list()
+    adminSDHolder = list()
+    schema = list()
 
     def __init__(self, forest: str, target: Target, credentials: Credentials, logger: Logger) -> None:
         self.target         = target
@@ -279,3 +283,33 @@ class LDAP:
         self.ous = self.__createArrayOfObject(response, ADOU)
 
         return self.ous
+
+    def getAdminSDHolder(self) -> List[ADAdminSDHolder]:
+        if len(self.adminSDHolder):
+            return self.adminSDHolder
+
+        response = self.search(
+            f"CN=AdminSDHolder,CN=System,{self.defaultNamingContext}",
+            "(cn=AdminSDHolder)",
+            ldap3.BASE,
+            ["DistinguishedName", "name", "ntSecurityDescriptor"]
+        )
+
+        self.adminSDHolder = self.__createArrayOfObject(response, ADAdminSDHolder)
+
+        return self.adminSDHolder
+
+    def getSchema(self) -> List[ADSchema]:
+        if len(self.schema):
+            return self.schema
+        
+        response = self.search(
+            f"CN=Schema,{self.configurationNamingContext}",
+            "(objectClass=*)",
+            ldap3.SUBTREE,
+            ["DistinguishedName", "name", "ntSecurityDescriptor"]
+        )
+
+        self.schema = self.__createArrayOfObject(response, ADSchema)
+
+        return self.schema

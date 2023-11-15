@@ -12,9 +12,10 @@ from abuseACL.core.Logger import Logger
 
 class abuseACL:
 
-    def __init__(self, ldap: LDAP, logger: Logger) -> None:
+    def __init__(self, ldap: LDAP, logger: Logger, extends: bool) -> None:
         self.ldap                   = ldap
         self.logger                 = logger
+        self.extends                = extends
 
         self.users                  = self.ldap.getAllUsers()
         self.groups                 = self.ldap.getAllGroups()
@@ -25,6 +26,12 @@ class abuseACL:
 
         self.allObjects = self.users + self.groups + self.computers + \
             self.certificatesTemplates + self.gpos + self.ous
+        
+        if self.extends:
+            self.adminSDHolder      = self.ldap.getAdminSDHolder()
+            self.schema             = self.ldap.getSchema()
+
+            self.allObjects += self.adminSDHolder + self.schema
 
     def isObjectTypeGUIDRestricted(self, ace) -> RIGHTS_GUID:
         isDangerous = self.isObjectTypeGUIDDangerous(ace)

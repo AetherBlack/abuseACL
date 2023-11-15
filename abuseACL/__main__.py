@@ -30,6 +30,7 @@ class Arguments:
     principal: str
     principalsfile: str
     forest: str
+    extends: bool
 
     def __init__(self) -> None:
         self.__parser = argparse.ArgumentParser(add_help=True, description="Automatic Windows vulnerable ACEs/ACLs listing")
@@ -54,6 +55,10 @@ class Arguments:
         filters.add_argument("-principalsfile", action="store", help="File with multiple User/Computer/Group")
         filters.add_argument("-forest", action="store", help="Forest to use if different from dc. Not implemented yet.")
 
+        # LDAP
+        ldap = self.__parser.add_argument_group("LDAP")
+        ldap.add_argument("-extends", action="store_true", help="Check adminSDHolder and Schema.")
+
         self.__parser.add_argument("target", action="store", help="[[domain/]username[:password]@]<targetName or address>")
 
     def parseArgs(self) -> None:
@@ -73,6 +78,7 @@ class Arguments:
         self.principal      = self._args.principal
         self.principalsfile = self._args.principalsfile
         self.forest         = self._args.forest
+        self.extends        = self._args.extends
 
         self.domain, self.username, self.password, self.remote_name = utils.parse_target(self._args.target)
         if not len(self.domain):
@@ -111,7 +117,7 @@ def main():
     target = Target(arguments.dc_ip or arguments.remote_name or arguments.domain, arguments.port)
     ldap = LDAP(arguments.forest, target, credentials, logger)
 
-    acl = abuseACL(ldap, logger)
+    acl = abuseACL(ldap, logger, arguments.extends)
 
     # One specific account
     if arguments.principal:
