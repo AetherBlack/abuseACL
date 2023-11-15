@@ -3,6 +3,8 @@ from enum import Enum
 
 
 class ACCESS_MASK(Enum):
+    FULL_CONTROL            = 0x000f01ff
+
     # Perform "Validated writes" (i.e. edit an attribute's value and have that value verified and validate by AD). The "Validated writes" is referenced by an "ObjectType GUID".
     SELF                    = 0x00000008
 
@@ -24,8 +26,6 @@ class ACCESS_MASK(Enum):
 
     # Combination of write permissions (Self, WriteProperty) among other things.
     GENERIC_WRITE           = 0x40000000
-
-    FULL_CONTROL            = 0x000f01ff
 
 
 class RIGHTS_GUID(Enum):

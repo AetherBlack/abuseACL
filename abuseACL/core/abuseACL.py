@@ -60,6 +60,17 @@ class abuseACL:
 
         return False
 
+    def printVuln(self, entry: ADObject, ace, perm: ACCESS_MASK, principalName: str, principalSid: str, right: RIGHTS_GUID) -> None:
+        self.logger.vuln(f"Result for {entry.sAMAccountName} ({entry.distinguishedName})")
+        self.logger.vuln(f"    ACE Type           : {ace['Ace'].__class__.__name__}")
+        self.logger.vuln(f"    Access mask        : {perm.name}")
+        self.logger.vuln(f"    Principal (SID)    : {principalName} ({principalSid})")
+
+        if right:
+            # Right and GUID
+            self.logger.vuln(f"    Object type (GUID) : {right.name} ({right.value})")
+
+
     def abuse(self, principalName: str) -> None:
         """
         crossDomain possible check with another forest.
@@ -101,6 +112,12 @@ class abuseACL:
                     if principalSid != ace["Ace"]["Sid"].formatCanonical():
                         continue
 
+                    # Don't need to check if already full rights
+                    if ace["Ace"]["Mask"].hasPriv(ACCESS_MASK.FULL_CONTROL.value):
+                        haveVulnerability = True
+                        self.printVuln(entry, ace, ACCESS_MASK.FULL_CONTROL, principalName, principalSid, False)
+                        continue
+
                     for perm in ACCESS_MASK:
                         # Check if permission in current ACE
                         if not (ace["Ace"]["Mask"].hasPriv(perm.value)):
@@ -132,14 +149,7 @@ class abuseACL:
                         if len(vuln):
                             haveVulnerability = True
 
-                            self.logger.vuln(f"Result for {entry.sAMAccountName} ({entry.distinguishedName})")
-                            self.logger.vuln(f"    ACE Type           : {ace['Ace'].__class__.__name__}")
-                            self.logger.vuln(f"    Access mask        : {perm.name}")
-                            self.logger.vuln(f"    Principal (SID)    : {principalName} ({principalSid})")
-
-                            if right:
-                                # Right and GUID
-                                self.logger.vuln(f"    Object type (GUID) : {right.name} ({right.value})")
+                            self.printVuln(entry, ace, perm, principalName, principalSid, right)
 
         # In case no vulnerability were found for the principal
         if not haveVulnerability:
