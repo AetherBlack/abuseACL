@@ -13,8 +13,8 @@ from abuseACL.core.Logger import Logger
 class abuseACL:
 
     def __init__(self, ldap: LDAP, logger: Logger) -> None:
-        self.ldap = ldap
-        self.logger = logger
+        self.ldap                   = ldap
+        self.logger                 = logger
 
         self.users                  = self.ldap.getAllUsers()
         self.groups                 = self.ldap.getAllGroups()
@@ -59,7 +59,8 @@ class abuseACL:
         Check if the user is the owner of another user, group, computer, certificateTemplate, gpo
         Check if the user have dangerous write on another user, (group, Self the user can add itself to the group), computer, certificateTemplate, gpo
         """
-        principalName = principalName.lower()
+        haveVulnerability       = False
+        principalName           = principalName.lower()
 
         principalSid = ADUser.getUserSid(self.users, principalName)
         if principalSid is None:
@@ -81,6 +82,7 @@ class abuseACL:
             securityDescriptor = entry.nTSecurityDescriptor
 
             if principalSid == securityDescriptor["OwnerSid"].formatCanonical():
+                haveVulnerability = True
                 self.logger.vuln(f"{principalName} is the owner of {entry.sAMAccountName}")
 
             # ACE in ACL
@@ -121,6 +123,8 @@ class abuseACL:
                                 vuln = ""
 
                         if len(vuln):
+                            haveVulnerability = True
+
                             self.logger.vuln(f"Result for {entry.sAMAccountName} ({entry.distinguishedName})")
                             self.logger.vuln(f"    ACE Type           : {ace['Ace'].__class__.__name__}")
                             self.logger.vuln(f"    Access mask        : {perm.name}")
@@ -129,3 +133,7 @@ class abuseACL:
                             if right:
                                 # Right and GUID
                                 self.logger.vuln(f"    Object type (GUID) : {right.name} ({right.value})")
+
+        # In case no vulnerability were found for the principal
+        if not haveVulnerability:
+            self.logger.error(f"Nothing found for principal {principalName}")
