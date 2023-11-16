@@ -26,24 +26,34 @@ sudo python3 -m pip install -r requirements.txt
 sudo python3 setup.py install
 ```
 
+OR with pipx :
+
+```bash
+python3 -m pipx install git+https://github.com/AetherBlack/abuseACL/
+```
+
 ## Examples
 
 - You want to list vulnerable ACEs/ACLs for the current user :
 
 ```bash
-abuseACL CONTOSO/User:'Password'@dc01.contoso.intra
+abuseACL $DOMAIN/$USER:"$PASSWORD"@$TARGET
 ```
+
+![](./docs/img/1.png)
 
 - You want to list vulnerable ACEs/ACLs for another user/computer/group :
 
 ```bash
-abuseACL -principal Aether CONTOSO/User:'Password'@dc01.contoso.intra
+abuseACL -principal Aether $DOMAIN/$USER:"$PASSWORD"@$TARGET
 ```
+
+![](./docs/img/3.png)
 
 - You want to list vulnerable ACEs/ACLs for a list of users/computers/groups :
 
 ```bash
-abuseACL -principalsfile accounts.txt CONTOSO/User:'Password'@dc01.contoso.intra
+abuseACL -principalsfile accounts.txt $DOMAIN/$USER:"$PASSWORD"@$TARGET
 ```
 
 Here is an example of `principalsfile` content:
@@ -54,6 +64,16 @@ Group
 aether
 Machine$
 ```
+
+![](./docs/img/4.png)
+
+- You want to list vulnerable ACEs/ACLs on Schema or on adminSDHolder :
+
+```bash
+abuseACL -extends $DOMAIN/$USER:"$PASSWORD"@$TARGET
+```
+
+![](./docs/img/2.png)
 
 You can look in the documentation of [DACL](https://www.thehacker.recipes/a-d/movement/dacl) to find out how to exploit the rights and use [dacledit](https://github.com/ThePorgs/impacket/blob/master/examples/dacledit.py) to exploit the ACEs.
 
