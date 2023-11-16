@@ -93,7 +93,7 @@ class Arguments:
         
         if ":" not in self.hashes and len(self.hashes):
             self.hashes = "aad3b435b51404eeaad3b435b51404ee:%s" % (self.hashes)
-        else:
+        elif len(self.hashes):
             lm, nt = self.hashes.split(":", 1)
             if not len(lm):
                 self.hashes = "aad3b435b51404eeaad3b435b51404ee%s" % (self.hashes)
