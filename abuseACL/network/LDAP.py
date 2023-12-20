@@ -13,6 +13,7 @@ from abuseACL.structures.ADObject.ADComputer import ADComputer
 from abuseACL.structures.ADObject.ADSchema import ADSchema
 from abuseACL.structures.ADObject.ADGroup import ADGroup
 from abuseACL.structures.ADObject.ADUser import ADUser
+from abuseACL.structures.ADObject.ADgMSA import ADgMSA
 from abuseACL.structures.ADObject.ADGPO import ADGPO
 from abuseACL.structures.ADObject.ADOU import ADOU
 from abuseACL.network.Kerberos import Kerberos
@@ -28,6 +29,7 @@ class LDAP:
     ous = list()
     adminSDHolder = list()
     schema = list()
+    gMSA = list()
 
     def __init__(self, forest: str, target: Target, credentials: Credentials, logger: Logger) -> None:
         self.target         = target
@@ -314,3 +316,18 @@ class LDAP:
         self.schema = self.__createArrayOfObject(response, ADSchema)
 
         return self.schema
+
+    def getAllgMSAs(self) -> List[ADgMSA]:
+        if len(self.gMSA):
+            return self.gMSA
+        
+        response = self.search(
+            self.defaultNamingContext,
+            "(objectClass=msDS-GroupManagedServiceAccount)",
+            ldap3.SUBTREE,
+            ["DistinguishedName", "sAMAccountName", "objectSid", "ntSecurityDescriptor"]
+        )
+
+        self.gMSA = self.__createArrayOfObject(response, ADgMSA)
+
+        return self.gMSA

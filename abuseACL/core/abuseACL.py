@@ -6,6 +6,7 @@ from abuseACL.structures.structures import ACCESS_MASK, RIGHTS_GUID
 from abuseACL.structures.ADObject.ADComputer import ADComputer
 from abuseACL.structures.ADObject.ADGroup import ADGroup
 from abuseACL.structures.ADObject.ADUser import ADUser
+from abuseACL.structures.ADObject.ADgMSA import ADgMSA
 from abuseACL.structures.ADObject import ADObject
 from abuseACL.network.LDAP import LDAP
 from abuseACL.core.Logger import Logger
@@ -23,9 +24,10 @@ class abuseACL:
         self.certificatesTemplates  = self.ldap.getAllCertificatesTemplates()
         self.gpos                   = self.ldap.getAllGPOs()
         self.ous                    = self.ldap.getAllOUs()
+        self.gMSAs                  = self.ldap.getAllgMSAs()
 
         self.allObjects = self.users + self.groups + self.computers + \
-            self.certificatesTemplates + self.gpos + self.ous
+            self.certificatesTemplates + self.gpos + self.ous + self.gMSAs
         
         if self.extends:
             self.adminSDHolder      = self.ldap.getAdminSDHolder()
@@ -83,8 +85,10 @@ class abuseACL:
         principalSid = ADUser.getUserSid(self.users, principalName)
         if principalSid is None:
             principalSid = ADGroup.getGroupSid(self.groups, principalName)
-        if principalName is None:
+        if principalSid is None:
             principalSid = ADComputer.getComputerSid(self.computers, principalName)
+        if principalSid is None:
+            principalSid = ADgMSA.getgMSASid(self.gMSAs, principalName)
 
         if principalSid is None:
             self.logger.error(f"Can't find principal with name {principalName}")
