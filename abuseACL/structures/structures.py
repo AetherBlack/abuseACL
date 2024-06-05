@@ -49,3 +49,6 @@ class RIGHTS_GUID(Enum):
 
     # All
     ALL                             = "00000000-0000-0000-0000-000000000000"
+
+    # Edit the "gpLink" attribute of the object.
+    MANAGE_GP_LINK                  = "f30e3bbf-9ff0-11d1-b603-0000f80367c1"
