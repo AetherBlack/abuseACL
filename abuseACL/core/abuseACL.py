@@ -92,7 +92,7 @@ class abuseACL:
 
         if principalSid is None:
             self.logger.error(f"Can't find principal with name {principalName}")
-            exit(1)
+            return
         
         self.logger.debug(f"SID of the principal: {principalSid}")
 
