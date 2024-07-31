@@ -148,7 +148,9 @@ class LDAP:
 
         return ldapConn
     
-    def search(self, dn: str, filter: str, scope: str, attributes: list = ["*"]) -> list:
+    def search(self, dn: str, filter: str, scope: str, attributes: list = ["*"], cookie: str | bytes | None = None) -> list:
+        entries = list()
+
         ldapConn = self.__Authentication()
         ldapConn.search(
             search_base=dn,
@@ -157,9 +159,21 @@ class LDAP:
             attributes=attributes,
             # Controls to get nTSecurityDescriptor from standard user
             # OWNER_SECURITY_INFORMATION + GROUP_SECURITY_INFORMATION + DACL_SECURITY_INFORMATION
-            controls=[("1.2.840.113556.1.4.801", True, "%c%c%c%c%c" % (48, 3, 2, 1, 7), )]
+            controls=[("1.2.840.113556.1.4.801", True, "%c%c%c%c%c" % (48, 3, 2, 1, 7), )],
+            paged_size=5000,
+            paged_cookie=cookie
         )
-        return ldapConn.response
+        entries.extend(ldapConn.response)
+
+        if ldapConn.result.get("controls", False):
+            cookie = ldapConn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
+        else:
+            cookie = None
+
+        if cookie:
+            entries.extend(self.search(dn, filter, scope, attributes, cookie))
+
+        return entries
 
     def __createArrayOfObject(self, response: list, obj: object) -> list:
 
