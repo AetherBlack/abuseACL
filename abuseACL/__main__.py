@@ -1,4 +1,3 @@
-
 from impacket.examples import utils
 from getpass import getpass
 
@@ -54,6 +53,7 @@ class Arguments:
         filters.add_argument("-principal", action="store", help="Find vulnerable ACE for a specific User/Computer/Group")
         filters.add_argument("-principalsfile", action="store", help="File with multiple User/Computer/Group")
         filters.add_argument("-forest", action="store", help="Forest to use if different from dc. Not implemented yet.")
+        filters.add_argument("-all", action="store_true", help="Find vulnerable on all users and groups in AD")
 
         # LDAP
         ldap = self.__parser.add_argument_group("LDAP")
@@ -79,18 +79,19 @@ class Arguments:
         self.principalsfile = self._args.principalsfile
         self.forest         = self._args.forest
         self.extends        = self._args.extends
+        self.all            = self._args.all
 
         self.domain, self.username, self.password, self.remote_name = utils.parse_target(self._args.target)
         if not len(self.domain):
             self.domain, self.username, self.password = utils.parse_credentials(self._args.target)
             self.remote_name = None
-        
+
         if not len(self.password) and self.hashes is None and not self.no_pass and self.aesKey is None:
             self.password = getpass("Password:")
 
         if self.hashes is None:
             self.hashes = ""
-        
+
         if ":" not in self.hashes and len(self.hashes):
             self.hashes = "aad3b435b51404eeaad3b435b51404ee:%s" % (self.hashes)
         elif len(self.hashes):
@@ -106,7 +107,7 @@ class Arguments:
             if not os.path.isfile(self.principalsfile):
                 Logger(self.debug, self.ts).error(f"File {self.principalsfile} is not a file")
                 exit(1)
-            
+
             with open(self.principalsfile) as f:
                 self.principalsfile = f.read().splitlines()
 
@@ -123,6 +124,7 @@ def main():
 
     acl = abuseACL(ldap, logger, arguments.extends)
 
+
     # One specific account
     if arguments.principal:
         acl.abuse(arguments.principal)
@@ -131,5 +133,13 @@ def main():
         for principal in arguments.principalsfile:
             acl.abuse(principal)
     # Default
+    elif arguments.all:
+        LdapUsers = ldap.getAllUsers()
+        for user in LdapUsers:
+            acl.abuse(user.sAMAccountName)
+
+        LdapGroups = ldap.getAllGroups()
+        for group in LdapGroups:
+            acl.abuse(group.sAMAccountName)
     else:
         acl.abuse(arguments.username)
