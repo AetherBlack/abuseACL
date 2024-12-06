@@ -82,9 +82,16 @@ class LDAP:
         if self.credentials.doKerberos:
             ldapConn = ldap3.Connection(ldapServer)
             ldapConn = self.kerberosAuthentication(ldapConn)
+        elif self.credentials.doSimpleBind:
+            ldapConn = ldap3.Connection(ldapServer, user=user, password=self.credentials.getAuthenticationSecret(), authentication=ldap3.SIMPLE)
+            ldapConn.bind()
         else:
             ldapConn = ldap3.Connection(ldapServer, user=user, password=self.credentials.getAuthenticationSecret(), authentication=ldap3.NTLM)
-            ldapConn.bind()
+            try:
+                ldapConn.bind()
+            except ldap3.core.exceptions.LDAPSocketReceiveError:
+                self.logger.error("Can't connect using NTLM, try with -simple-bind option")
+                exit(1)
 
         if ldapConn.result["description"] == "invalidCredentials":
             self.logger.error("Invalid credentials !")

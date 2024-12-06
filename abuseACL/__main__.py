@@ -31,6 +31,7 @@ class Arguments:
     principalsfile: str
     forest: str
     extends: bool
+    doSimpleBind: bool
 
     def __init__(self) -> None:
         self.__parser = argparse.ArgumentParser(add_help=True, description="Automatic Windows vulnerable ACEs/ACLs listing")
@@ -48,6 +49,7 @@ class Arguments:
         connection = self.__parser.add_argument_group("Connection")
         connection.add_argument("-dc-ip", action="store", metavar="ip address", help="IP Address of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
         connection.add_argument("-port", type=int, action="store", help="Port of the domain controller. If omitted it will try to authenticate in LDAPS and then in LDAP.")
+        connection.add_argument("-simple-bind", action="store_true", help="LDAP authentication in plaintext (SIMPLE). Sometimes, you only need to provide the domaine like CONTOSO/user instead of CONTOSO.LAN/user.")
 
         # User
         filters = self.__parser.add_argument_group("Filters")
@@ -79,6 +81,7 @@ class Arguments:
         self.principalsfile = self._args.principalsfile
         self.forest         = self._args.forest
         self.extends        = self._args.extends
+        self.doSimpleBind   = self._args.simple_bind
 
         self.domain, self.username, self.password, self.remote_name = utils.parse_target(self._args.target)
         if not len(self.domain):
@@ -117,7 +120,7 @@ def main():
     arguments.parseArgs()
 
     logger = Logger(arguments.debug, arguments.ts)
-    credentials = Credentials(arguments.username, arguments.password, arguments.domain, arguments.hashes, arguments.aesKey, arguments.doKerberos)
+    credentials = Credentials(arguments.username, arguments.password, arguments.domain, arguments.hashes, arguments.aesKey, arguments.doKerberos, arguments.doSimpleBind)
     target = Target(arguments.dc_ip or arguments.remote_name or arguments.domain, arguments.port)
     ldap = LDAP(arguments.forest, target, credentials, logger)
 
