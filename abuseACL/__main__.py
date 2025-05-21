@@ -28,6 +28,7 @@ class Arguments:
     password: str
     remote_name: str
     principal: str
+    principal_sid: str
     principalsfile: str
     forest: str
     extends: bool
@@ -54,6 +55,7 @@ class Arguments:
         # User
         filters = self.__parser.add_argument_group("Filters")
         filters.add_argument("-principal", action="store", help="Find vulnerable ACE for a specific User/Computer/Group")
+        filters.add_argument("-principal-sid", action="store", help="Find vulnerable ACE for a specific SID")
         filters.add_argument("-principalsfile", action="store", help="File with multiple User/Computer/Group")
         filters.add_argument("-forest", action="store", help="Forest to use if different from dc. Not implemented yet.")
 
@@ -78,6 +80,7 @@ class Arguments:
         self.dc_ip          = self._args.dc_ip
         self.port           = self._args.port
         self.principal      = self._args.principal
+        self.principal_sid  = self._args.principal_sid
         self.principalsfile = self._args.principalsfile
         self.forest         = self._args.forest
         self.extends        = self._args.extends
@@ -133,6 +136,9 @@ def main():
     elif arguments.principalsfile:
         for principal in arguments.principalsfile:
             acl.abuse(principal)
+    # Using SID
+    elif arguments.principal_sid:
+        acl.abuse(arguments.principal_sid)
     # Default
     else:
         acl.abuse(arguments.username)

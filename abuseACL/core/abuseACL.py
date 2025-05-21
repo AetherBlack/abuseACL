@@ -73,6 +73,12 @@ class abuseACL:
             self.logger.vuln(f"    Object type (GUID) : {right.name} ({right.value})")
 
 
+    def getPrincipalSID(self, principalName: str) -> str|None:
+        return ADUser.getUserSid(self.users, principalName) or \
+            ADGroup.getGroupSid(self.groups, principalName) or \
+            ADComputer.getComputerSid(self.computers, principalName) or \
+            ADgMSA.getgMSASid(self.gMSAs, principalName)
+
     def abuse(self, principalName: str) -> None:
         """
         crossDomain possible check with another forest.
@@ -80,19 +86,18 @@ class abuseACL:
         Check if the user have dangerous write on another user, (group, Self the user can add itself to the group), computer, certificateTemplate, gpo
         """
         haveVulnerability       = False
-        principalName           = principalName.lower()
 
-        principalSid = ADUser.getUserSid(self.users, principalName)
-        if principalSid is None:
-            principalSid = ADGroup.getGroupSid(self.groups, principalName)
-        if principalSid is None:
-            principalSid = ADComputer.getComputerSid(self.computers, principalName)
-        if principalSid is None:
-            principalSid = ADgMSA.getgMSASid(self.gMSAs, principalName)
+        # Check if the principal is an SID
+        if principalName.startswith("S-1-"):
+            principalSid = principalName
+        else:
+            principalName = principalName.lower()
 
-        if principalSid is None:
-            self.logger.error(f"Can't find principal with name {principalName}")
-            return
+            principalSid = self.getPrincipalSID(principalName)
+
+            if principalSid is None:
+                self.logger.error(f"Can't find principal with name {principalName}")
+                return
         
         self.logger.debug(f"SID of the principal: {principalSid}")
 
@@ -131,8 +136,8 @@ class abuseACL:
                         right = False
 
                         # Edit one of the object's attributes. The attribute is referenced by an "ObjectType GUID".
-                        if perm.name  == ACCESS_MASK.WRITE_PROPERTIES.name:
-                            right = self.isObjectTypeGUIDDangerous(ace)
+                        if perm.name == ACCESS_MASK.WRITE_PROPERTIES.name:
+                            right = self.isObjectTypeGUIDRestricted(ace)
                             if right:
                                 vuln = f"{principalName} can do {perm.name}:{right} on {entry.sAMAccountName}"
                             else:
