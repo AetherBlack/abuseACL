@@ -9,13 +9,17 @@ from abuseACL.structures.Credentials import Credentials
 from abuseACL.structures.Target import Target
 from abuseACL.structures.ADObject.ADCertificateTemplate import ADCertificateTemplate
 from abuseACL.structures.ADObject.ADAdminSDHolder import ADAdminSDHolder
+from abuseACL.structures.ADObject.ADContainer import ADContainer
 from abuseACL.structures.ADObject.ADComputer import ADComputer
+from abuseACL.structures.ADObject.ADDomain import ADDomain
 from abuseACL.structures.ADObject.ADSchema import ADSchema
 from abuseACL.structures.ADObject.ADGroup import ADGroup
 from abuseACL.structures.ADObject.ADUser import ADUser
 from abuseACL.structures.ADObject.ADgMSA import ADgMSA
 from abuseACL.structures.ADObject.ADGPO import ADGPO
 from abuseACL.structures.ADObject.ADOU import ADOU
+from abuseACL.structures.ADObject import ADObject
+from abuseACL.structures.structures import WELL_KNOWN_SID
 from abuseACL.network.Kerberos import Kerberos
 from abuseACL.core.Logger import Logger
 
@@ -27,9 +31,11 @@ class LDAP:
     certificatesTemplates = list()
     gpos = list()
     ous = list()
+    containers = list()
     adminSDHolder = list()
     schema = list()
     gMSA = list()
+    domain: ADDomain = None
 
     def __init__(self, forest: str, target: Target, credentials: Credentials, logger: Logger) -> None:
         self.target         = target
@@ -56,7 +62,7 @@ class LDAP:
             exit(1)
 
     def __checkAuthentication(self) -> None:
-        self.logger.debug("Trying to connect to %s:%d" % (self.target.remote, self.target.port))
+        self.logger.print("Trying to connect to %s:%d" % (self.target.remote, self.target.port))
         self.__Authentication()
 
         try:
@@ -65,7 +71,7 @@ class LDAP:
             self.logger.error("Invalid credentials !")
             exit(1)
 
-        self.logger.debug("Authentication success !")
+        self.logger.print("Authentication success !")
 
     def __Authentication(self) -> ldap3.Connection:
         user = "%s\\%s" % (self.credentials.domain, self.credentials.username)
@@ -215,12 +221,13 @@ class LDAP:
     def getAllUsers(self) -> List[ADUser]:
         if len(self.users):
             return self.users
+        self.logger.print("Retrive all users")
 
         response = self.search(
             self.defaultNamingContext,
             "(sAMAccountType=%d)" % (sAMAccountType.SAM_NORMAL_USER_ACCOUNT),
             ldap3.SUBTREE,
-            ["DistinguishedName", "name", "userPrincipalName", "sAMAccountName", "objectSid", "ntSecurityDescriptor", "userAccountControl"]
+            ["DistinguishedName", "name", "userPrincipalName", "sAMAccountName", "objectSid", "ntSecurityDescriptor", "userAccountControl", "memberOf"]
         )
 
         self.users = self.__createArrayOfObject(response, ADUser)
@@ -230,6 +237,7 @@ class LDAP:
     def getAllGroups(self) -> List[ADGroup]:
         if len(self.groups):
             return self.groups
+        self.logger.print("Retrive all groups")
 
         response = self.search(
             self.defaultNamingContext,
@@ -240,7 +248,7 @@ class LDAP:
                 sAMAccountType.SAM_NON_SECURITY_ALIAS_OBJECT
             ),
             ldap3.SUBTREE,
-            ["DistinguishedName", "name", "sAMAccountName", "objectSid", "ntSecurityDescriptor"]
+            ["DistinguishedName", "name", "sAMAccountName", "objectSid", "ntSecurityDescriptor", "memberOf"]
         )
 
         self.groups = self.__createArrayOfObject(response, ADGroup)
@@ -250,12 +258,13 @@ class LDAP:
     def getAllComputers(self) -> List[ADComputer]:
         if len(self.computers):
             return self.computers
+        self.logger.print("Retrive all computers")
 
         response = self.search(
             self.defaultNamingContext,
             "(sAMAccountType=%d)" % (sAMAccountType.SAM_MACHINE_ACCOUNT),
             ldap3.SUBTREE,
-            ["DistinguishedName", "name", "sAMAccountName", "objectSid", "ntSecurityDescriptor", "userAccountControl"]
+            ["DistinguishedName", "name", "sAMAccountName", "objectSid", "ntSecurityDescriptor", "userAccountControl", "memberOf"]
         )
 
         self.computers = self.__createArrayOfObject(response, ADComputer)
@@ -265,6 +274,7 @@ class LDAP:
     def getAllCertificatesTemplates(self) -> List[ADCertificateTemplate]:
         if len(self.certificatesTemplates):
             return self.certificatesTemplates
+        self.logger.print("Retrive all certificateTemplates")
 
         response = self.search(
             f"CN=Certificate Templates,CN=Public Key Services,CN=Services,{self.configurationNamingContext}",
@@ -280,6 +290,7 @@ class LDAP:
     def getAllGPOs(self) -> List[ADGPO]:
         if len(self.gpos):
             return self.gpos
+        self.logger.print("Retrive all GPOs")
 
         response = self.search(
             f"CN=Policies,CN=System,{self.defaultNamingContext}",
@@ -292,9 +303,10 @@ class LDAP:
 
         return self.gpos
 
-    def getAllOUs(self) -> List[ADGPO]:
+    def getAllOUs(self) -> List[ADOU]:
         if len(self.ous):
             return self.ous
+        self.logger.print("Retrive all OUs")
 
         response = self.search(
             self.defaultNamingContext,
@@ -306,10 +318,36 @@ class LDAP:
         self.ous = self.__createArrayOfObject(response, ADOU)
 
         return self.ous
+    
+    def getAllContainers(self) -> List[ADContainer]:
+        if len(self.containers):
+            return self.containers
+        self.logger.print("Retrive all containers")
+
+        response = self.search(
+            self.defaultNamingContext,
+            "(objectClass=container)",
+            ldap3.SUBTREE,
+            ["DistinguishedName", "name", "nTSecurityDescriptor"]
+        )
+
+        self.containers.extend(self.__createArrayOfObject(response, ADContainer))
+
+        response = self.search(
+            self.configurationNamingContext,
+            "(objectClass=container)",
+            ldap3.SUBTREE,
+            ["DistinguishedName", "name", "nTSecurityDescriptor"]
+        )
+
+        self.containers.extend(self.__createArrayOfObject(response, ADContainer))
+
+        return self.containers
 
     def getAdminSDHolder(self) -> List[ADAdminSDHolder]:
         if len(self.adminSDHolder):
             return self.adminSDHolder
+        self.logger.print("Retrive adminSDHolder")
 
         response = self.search(
             f"CN=AdminSDHolder,CN=System,{self.defaultNamingContext}",
@@ -325,6 +363,7 @@ class LDAP:
     def getSchema(self) -> List[ADSchema]:
         if len(self.schema):
             return self.schema
+        self.logger.print("Retrive Schema")
 
         # Subtree in case it's not inherant
         response = self.search(
@@ -341,14 +380,148 @@ class LDAP:
     def getAllgMSAs(self) -> List[ADgMSA]:
         if len(self.gMSA):
             return self.gMSA
+        self.logger.print("Retrive all gMSAs")
         
         response = self.search(
             self.defaultNamingContext,
             "(objectClass=msDS-GroupManagedServiceAccount)",
             ldap3.SUBTREE,
-            ["DistinguishedName", "sAMAccountName", "objectSid", "ntSecurityDescriptor"]
+            ["DistinguishedName", "sAMAccountName", "objectSid", "ntSecurityDescriptor", "memberOf"]
         )
 
         self.gMSA = self.__createArrayOfObject(response, ADgMSA)
 
         return self.gMSA
+
+    def getDomain(self) -> ADDomain:
+        if self.domain:
+            return self.domain
+        self.logger.print("Retrive domain")
+
+        response = self.search(
+            self.defaultNamingContext,
+            "(objectClass=*)",
+            ldap3.BASE,
+            ["DistinguishedName", "objectSid", "ntSecurityDescriptor"]
+        )
+
+        self.domain: ADDomain = self.__createArrayOfObject(response, ADDomain)[0]
+
+        return self.domain
+
+    def gatherAllInformations(self) -> None:
+        self.getAllUsers()
+        self.getAllGroups()
+        self.getAllComputers()
+        self.getAllCertificatesTemplates()
+        self.getAllGPOs()
+        self.getAllOUs()
+        self.getAllgMSAs()
+        self.getAdminSDHolder()
+        self.getSchema()
+        self.getDomain()
+
+    def isPrincipalExists(self, principal: str) -> ADObject | None:
+        if principal.startswith("S-1-"):
+            principalObject = ADGroup.getGroupFromSid(self.groups, principal) or ADUser.getUserFromSid(self.users, principal) or ADComputer.getComputerFromSid(self.computers, principal) or ADgMSA.getgMSAFromSid(self.gMSA, principal)
+        else:
+            principalObject = ADGroup.getGroupSid(self.groups, principal) or ADUser.getUserSid(self.users, principal) or ADComputer.getComputerSid(self.computers, principal) or ADgMSA.getgMSASid(self.gMSA, principal)
+
+        return principalObject
+
+    def getImplicitGroups(self, principalObject: ADObject) -> List[ADGroup]:
+         # Detect computers or users
+        if isinstance(principalObject, (ADUser, ADgMSA, )):
+            # Users: Domains User, Everyone, Authenticated Users
+            return [
+                ADGroup(
+                    [WELL_KNOWN_SID.DOMAIN_USERS.name.encode()],
+                    [WELL_KNOWN_SID.DOMAIN_USERS.name.encode()],
+                    [WELL_KNOWN_SID.DOMAIN_USERS.name.encode()],
+                    "".join([self.domain.objectSid, WELL_KNOWN_SID.DOMAIN_USERS.value]),
+                    None,
+                    []
+                ),
+                ADGroup(
+                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                    WELL_KNOWN_SID.EVERYONE.value,
+                    None,
+                    []
+                ),
+                ADGroup(
+                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                    WELL_KNOWN_SID.AUTHENTICATED_USER.value,
+                    None,
+                    []
+                )
+            ]
+        elif isinstance(principalObject, ADComputer):
+            # Computers: Domains Computers, Everyone, Authenticated Users
+            return [
+                ADGroup(
+                    [WELL_KNOWN_SID.DOMAIN_COMPUTERS.name.encode()],
+                    [WELL_KNOWN_SID.DOMAIN_COMPUTERS.name.encode()],
+                    [WELL_KNOWN_SID.DOMAIN_COMPUTERS.name.encode()],
+                    "".join([self.domain.objectSid, WELL_KNOWN_SID.DOMAIN_COMPUTERS.value]),
+                    None,
+                    []
+                ),
+                ADGroup(
+                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                    WELL_KNOWN_SID.EVERYONE.value,
+                    None,
+                    []
+                ),
+                ADGroup(
+                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                    WELL_KNOWN_SID.AUTHENTICATED_USER.value,
+                    None,
+                    []
+                )
+            ]
+
+    def getMemberOfForPrincipal(self, principalObject: ADObject) -> List[ADObject]:        
+        return principalObject.memberOf
+
+    def getGroupRecursive(self, group: str) -> List[ADGroup]:
+        groups: List[ADGroup] = list()
+
+        groupObject: ADGroup = ADGroup.getGroupSidFromDistinguishedName(self.groups, group)
+
+        if groupObject is None:
+            self.logger.debug(f"Can't find group {group}")
+            return groups
+        
+        groups.append(groupObject)
+
+        if len(groupObject.memberOf):
+            for group in groupObject.memberOf:
+                groups.extend(self.getGroupRecursive(group))
+
+        return groups
+
+    def getGroupsOfPrincipal(self, principalObject: ADObject) -> set[ADGroup]:
+        groups = set()
+
+        memberOf = self.getMemberOfForPrincipal(principalObject)
+        implicitMemberOf = self.getImplicitGroups(principalObject)
+
+        # If the user have no group
+        if not len(memberOf):
+            return implicitMemberOf
+
+        for group in memberOf:
+            groups.update(self.getGroupRecursive(group))
+
+        if len(implicitMemberOf):
+            groups.update(implicitMemberOf)
+
+        return groups

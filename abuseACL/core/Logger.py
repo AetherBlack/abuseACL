@@ -19,10 +19,13 @@ class Logger:
 
     def debug(self, msg: str) -> None:
         if self.__debug:
-            self.__toStdout(Fore.BLUE, "i", msg)
+            self.__toStdout(Fore.BLUE, "d", msg)
 
     def error(self, msg: str) -> None:
         self.__toStdout(Fore.RED, "!", msg)
 
     def vuln(self, msg: str) -> None:
         self.__toStdout(Fore.GREEN, "*", msg)
+
+    def print(self, msg: str) -> None:
+        self.__toStdout("", "i", msg)

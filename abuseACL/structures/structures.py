@@ -52,3 +52,9 @@ class RIGHTS_GUID(Enum):
 
     # Edit the "gpLink" attribute of the object.
     MANAGE_GP_LINK                  = "f30e3bbf-9ff0-11d1-b603-0000f80367c1"
+
+class WELL_KNOWN_SID(Enum):
+    EVERYONE            = "S-1-1-0"
+    AUTHENTICATED_USER  = "S-1-5-11"
+    DOMAIN_USERS        = "-513"
+    DOMAIN_COMPUTERS    = "-515"

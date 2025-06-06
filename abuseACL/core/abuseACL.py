@@ -32,8 +32,10 @@ class abuseACL:
         if self.extends:
             self.adminSDHolder      = self.ldap.getAdminSDHolder()
             self.schema             = self.ldap.getSchema()
+            self.domain             = self.ldap.getDomain()
+            self.containers         = self.ldap.getAllContainers()
 
-            self.allObjects += self.adminSDHolder + self.schema
+            self.allObjects += self.adminSDHolder + self.schema + [self.domain] + self.containers
 
     def isObjectTypeGUIDRestricted(self, ace) -> RIGHTS_GUID:
         isDangerous = self.isObjectTypeGUIDDangerous(ace)
@@ -62,43 +64,25 @@ class abuseACL:
 
         return False
 
-    def printVuln(self, entry: ADObject, ace, perm: ACCESS_MASK, principalName: str, principalSid: str, right: RIGHTS_GUID) -> None:
+    def printVuln(self, entry: ADObject, ace, perm: ACCESS_MASK, principal: ADUser|ADComputer|ADgMSA|ADGroup, right: RIGHTS_GUID) -> None:
         self.logger.vuln(f"Result for {entry.sAMAccountName} ({entry.distinguishedName})")
         self.logger.vuln(f"    ACE Type           : {ace['Ace'].__class__.__name__}")
         self.logger.vuln(f"    Access mask        : {perm.name}")
-        self.logger.vuln(f"    Principal (SID)    : {principalName} ({principalSid})")
+        self.logger.vuln(f"    Principal (SID)    : {principal.sAMAccountName} ({principal.objectSid})")
 
         if right:
             # Right and GUID
             self.logger.vuln(f"    Object type (GUID) : {right.name} ({right.value})")
 
-
-    def getPrincipalSID(self, principalName: str) -> str|None:
-        return ADUser.getUserSid(self.users, principalName) or \
-            ADGroup.getGroupSid(self.groups, principalName) or \
-            ADComputer.getComputerSid(self.computers, principalName) or \
-            ADgMSA.getgMSASid(self.gMSAs, principalName)
-
-    def abuse(self, principalName: str) -> None:
+    def abuse(self, principal: ADUser|ADComputer|ADgMSA|ADGroup) -> None:
         """
         crossDomain possible check with another forest.
         Check if the user is the owner of another user, group, computer, certificateTemplate, gpo
         Check if the user have dangerous write on another user, (group, Self the user can add itself to the group), computer, certificateTemplate, gpo
         """
-        haveVulnerability       = False
+        haveVulnerability   = False
+        principalSid        = principal.objectSid
 
-        # Check if the principal is an SID
-        if principalName.startswith("S-1-"):
-            principalSid = principalName
-        else:
-            principalName = principalName.lower()
-
-            principalSid = self.getPrincipalSID(principalName)
-
-            if principalSid is None:
-                self.logger.error(f"Can't find principal with name {principalName}")
-                return
-        
         self.logger.debug(f"SID of the principal: {principalSid}")
 
         for entry in self.allObjects:
@@ -108,9 +92,13 @@ class abuseACL:
 
             securityDescriptor = entry.nTSecurityDescriptor
 
+            # Check securityDescriptor, sometimes, we can't read them like for (Microsoft Exchange container, idk why)
+            if securityDescriptor is None:
+                continue
+
             if principalSid == securityDescriptor["OwnerSid"].formatCanonical():
                 haveVulnerability = True
-                self.logger.vuln(f"{principalName} is the owner of {entry.sAMAccountName}")
+                self.logger.vuln(f"{principal.sAMAccountName} is the owner of {entry.sAMAccountName}")
 
             # ACE in ACL
             for ace in securityDescriptor["Dacl"].aces:
@@ -124,7 +112,7 @@ class abuseACL:
                     # Don't need to check if already full rights
                     if ace["Ace"]["Mask"].hasPriv(ACCESS_MASK.FULL_CONTROL.value):
                         haveVulnerability = True
-                        self.printVuln(entry, ace, ACCESS_MASK.FULL_CONTROL, principalName, principalSid, False)
+                        self.printVuln(entry, ace, ACCESS_MASK.FULL_CONTROL, principal, False)
                         continue
 
                     for perm in ACCESS_MASK:
@@ -132,14 +120,14 @@ class abuseACL:
                         if not (ace["Ace"]["Mask"].hasPriv(perm.value)):
                             continue
 
-                        vuln = f"{principalName} can do {perm.name} on {entry.sAMAccountName}"
+                        vuln = f"{principal.sAMAccountName} can do {perm.name} on {entry.sAMAccountName}"
                         right = False
 
                         # Edit one of the object's attributes. The attribute is referenced by an "ObjectType GUID".
                         if perm.name == ACCESS_MASK.WRITE_PROPERTIES.name:
                             right = self.isObjectTypeGUIDRestricted(ace)
                             if right:
-                                vuln = f"{principalName} can do {perm.name}:{right} on {entry.sAMAccountName}"
+                                vuln = f"{principal.sAMAccountName} can do {perm.name}:{right} on {entry.sAMAccountName}"
                             else:
                                 # Debug, in case it is useful, (No vulnerability)
                                 self.logger.debug(vuln)
@@ -149,7 +137,7 @@ class abuseACL:
                         elif perm.name == ACCESS_MASK.ALL_EXTENDED_RIGHTS.name:
                             right = self.isObjectTypeGUIDRestricted(ace)
                             if right:
-                                vuln = f"{principalName} can do {perm.name}:{right} on {entry.sAMAccountName}"
+                                vuln = f"{principal.sAMAccountName} can do {perm.name}:{right} on {entry.sAMAccountName}"
                             else:
                                 # Debug, in case it is useful, (No vulnerability)
                                 self.logger.debug(vuln)
@@ -158,8 +146,8 @@ class abuseACL:
                         if len(vuln):
                             haveVulnerability = True
 
-                            self.printVuln(entry, ace, perm, principalName, principalSid, right)
+                            self.printVuln(entry, ace, perm, principal, right)
 
         # In case no vulnerability were found for the principal
         if not haveVulnerability:
-            self.logger.error(f"Nothing found for principal {principalName}")
+            self.logger.error(f"Nothing found for principal {principal.sAMAccountName}")

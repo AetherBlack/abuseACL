@@ -33,6 +33,7 @@ class Arguments:
     forest: str
     extends: bool
     doSimpleBind: bool
+    recurse: bool
 
     def __init__(self) -> None:
         self.__parser = argparse.ArgumentParser(add_help=True, description="Automatic Windows vulnerable ACEs/ACLs listing")
@@ -58,6 +59,7 @@ class Arguments:
         filters.add_argument("-principal-sid", action="store", help="Find vulnerable ACE for a specific SID")
         filters.add_argument("-principalsfile", action="store", help="File with multiple User/Computer/Group")
         filters.add_argument("-forest", action="store", help="Forest to use if different from dc. Not implemented yet.")
+        filters.add_argument("-recurse", action="store_true", help="Check group(s) related to the principal")
 
         # LDAP
         ldap = self.__parser.add_argument_group("LDAP")
@@ -85,6 +87,7 @@ class Arguments:
         self.forest         = self._args.forest
         self.extends        = self._args.extends
         self.doSimpleBind   = self._args.simple_bind
+        self.recurse        = self._args.recurse
 
         self.domain, self.username, self.password, self.remote_name = utils.parse_target(self._args.target)
         if not len(self.domain):
@@ -129,16 +132,27 @@ def main():
 
     acl = abuseACL(ldap, logger, arguments.extends)
 
-    # One specific account
-    if arguments.principal:
-        acl.abuse(arguments.principal)
-    # Multiple accounts
-    elif arguments.principalsfile:
-        for principal in arguments.principalsfile:
-            acl.abuse(principal)
-    # Using SID
-    elif arguments.principal_sid:
-        acl.abuse(arguments.principal_sid)
-    # Default
-    else:
-        acl.abuse(arguments.username)
+    logger.print("Gather all LDAP informations")
+    ldap.gatherAllInformations()
+
+    principals = arguments.principal or arguments.principal_sid or arguments.principalsfile or arguments.username
+
+    if not isinstance(principals, list):
+        principals = [principals]
+
+    for principal in principals:
+        principalObject = ldap.isPrincipalExists(principal)
+        if not principalObject:
+            logger.error(f"Can't find principal {principal}")
+            continue
+
+        if arguments.recurse:
+            groupsOfPrincipal = ldap.getGroupsOfPrincipal(principalObject)
+            logger.print(f"Principal {principalObject.sAMAccountName} is member of:")
+            for group in groupsOfPrincipal:
+                logger.print(f"\t{group.name} ({group.objectSid})")
+
+            for groupObject in groupsOfPrincipal:
+                acl.abuse(groupObject)
+
+        acl.abuse(principalObject)
