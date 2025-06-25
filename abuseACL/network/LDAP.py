@@ -430,63 +430,49 @@ class LDAP:
         return principalObject
 
     def getImplicitGroups(self, principalObject: ADObject) -> List[ADGroup]:
-         # Detect computers or users
+        implicitGroups: List[ADGroup] = []
+
+        # Detect computers or users
         if isinstance(principalObject, (ADUser, ADgMSA, )):
             # Users: Domains User, Everyone, Authenticated Users
-            return [
-                ADGroup(
-                    [WELL_KNOWN_SID.DOMAIN_USERS.name.encode()],
-                    [WELL_KNOWN_SID.DOMAIN_USERS.name.encode()],
-                    [WELL_KNOWN_SID.DOMAIN_USERS.name.encode()],
-                    "".join([self.domain.objectSid, WELL_KNOWN_SID.DOMAIN_USERS.value]),
-                    None,
-                    []
-                ),
-                ADGroup(
-                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
-                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
-                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
-                    WELL_KNOWN_SID.EVERYONE.value,
-                    None,
-                    []
-                ),
-                ADGroup(
-                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
-                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
-                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
-                    WELL_KNOWN_SID.AUTHENTICATED_USER.value,
-                    None,
-                    []
-                )
-            ]
+            domainUsersGroup = ADGroup.getGroupFromSid(self.groups, "".join([self.domain.objectSid, WELL_KNOWN_SID.DOMAIN_USERS.value]))
+            implicitGroups.append(
+                domainUsersGroup
+            )
+            implicitGroups.extend(self.getGroupRecursive(domainUsersGroup.distinguishedName))
+
         elif isinstance(principalObject, ADComputer):
             # Computers: Domains Computers, Everyone, Authenticated Users
-            return [
-                ADGroup(
-                    [WELL_KNOWN_SID.DOMAIN_COMPUTERS.name.encode()],
-                    [WELL_KNOWN_SID.DOMAIN_COMPUTERS.name.encode()],
-                    [WELL_KNOWN_SID.DOMAIN_COMPUTERS.name.encode()],
-                    "".join([self.domain.objectSid, WELL_KNOWN_SID.DOMAIN_COMPUTERS.value]),
-                    None,
-                    []
-                ),
-                ADGroup(
-                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
-                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
-                    [WELL_KNOWN_SID.EVERYONE.name.encode()],
-                    WELL_KNOWN_SID.EVERYONE.value,
-                    None,
-                    []
-                ),
-                ADGroup(
-                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
-                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
-                    [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
-                    WELL_KNOWN_SID.AUTHENTICATED_USER.value,
-                    None,
-                    []
-                )
-            ]
+            domainComputersGroup = ADGroup.getGroupFromSid(self.groups, "".join([self.domain.objectSid, WELL_KNOWN_SID.DOMAIN_COMPUTERS.value]))
+            implicitGroups.append(
+                domainComputersGroup
+            )
+            implicitGroups.extend(self.getGroupRecursive(domainComputersGroup.distinguishedName))
+
+        if isinstance(principalObject, (ADUser, ADgMSA, ADComputer, )):
+            # Users & Computers: Everyone, Authenticated Users
+            implicitGroups.extend(
+                [
+                    ADGroup(
+                        [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                        [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                        [WELL_KNOWN_SID.EVERYONE.name.encode()],
+                        WELL_KNOWN_SID.EVERYONE.value,
+                        None,
+                        []
+                    ),
+                    ADGroup(
+                        [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                        [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                        [WELL_KNOWN_SID.AUTHENTICATED_USER.name.encode()],
+                        WELL_KNOWN_SID.AUTHENTICATED_USER.value,
+                        None,
+                        []
+                    )
+                ]
+            )
+        
+        return implicitGroups
 
     def getMemberOfForPrincipal(self, principalObject: ADObject) -> List[ADObject]:        
         return principalObject.memberOf
