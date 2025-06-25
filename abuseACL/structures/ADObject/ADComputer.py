@@ -15,12 +15,12 @@ class ADComputer(ADObject):
         self.isUserEnable = self.userAccountControl & 0x0002
 
     @staticmethod
-    def getComputerSid(computers: list, computername: str) -> str:
+    def getComputerSid(computers: list, computername: str) -> ADObject | None:
         for computer in computers:
             computer: ADComputer
 
             if computer.sAMAccountName == computername:
-                return computer.objectSid
+                return computer
 
         return None
 

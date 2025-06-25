@@ -11,12 +11,12 @@ class ADgMSA(ADObject):
         self.memberOf               = [group.decode() for group in memberOf]
 
     @staticmethod
-    def getgMSASid(gMSAs: list, principal: str) -> str:
+    def getgMSASid(gMSAs: list, principal: str) -> ADObject | None:
         for gMSA in gMSAs:
             gMSA: ADgMSA
 
             if gMSA.sAMAccountName == principal:
-                return gMSA.objectSid
+                return gMSA
 
         return None
 

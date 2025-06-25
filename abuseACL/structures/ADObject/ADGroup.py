@@ -12,12 +12,12 @@ class ADGroup(ADObject):
         self.memberOf               = [group.decode() for group in memberOf]
 
     @staticmethod
-    def getGroupSid(groups: list, groupname: str) -> str:
+    def getGroupSid(groups: list, groupname: str) -> ADObject | None:
         for group in groups:
             group: ADGroup
 
             if group.sAMAccountName == groupname:
-                return group.objectSid
+                return group
 
         return None
 

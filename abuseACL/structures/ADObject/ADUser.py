@@ -16,12 +16,12 @@ class ADUser(ADObject):
         self.isUserEnable           = self.userAccountControl & 0x0002
 
     @staticmethod
-    def getUserSid(users: list, username: str) -> str:
+    def getUserSid(users: list, username: str) -> ADObject | None:
         for user in users:
             user: ADUser
 
             if user.sAMAccountName == username:
-                return user.objectSid
+                return user
 
         return None
 
