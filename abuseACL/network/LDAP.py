@@ -221,7 +221,7 @@ class LDAP:
     def getAllUsers(self) -> List[ADUser]:
         if len(self.users):
             return self.users
-        self.logger.print("Retrive all users")
+        self.logger.print("Retrieve all users")
 
         response = self.search(
             self.defaultNamingContext,
@@ -237,7 +237,7 @@ class LDAP:
     def getAllGroups(self) -> List[ADGroup]:
         if len(self.groups):
             return self.groups
-        self.logger.print("Retrive all groups")
+        self.logger.print("Retrieve all groups")
 
         response = self.search(
             self.defaultNamingContext,
@@ -258,7 +258,7 @@ class LDAP:
     def getAllComputers(self) -> List[ADComputer]:
         if len(self.computers):
             return self.computers
-        self.logger.print("Retrive all computers")
+        self.logger.print("Retrieve all computers")
 
         response = self.search(
             self.defaultNamingContext,
@@ -274,7 +274,7 @@ class LDAP:
     def getAllCertificatesTemplates(self) -> List[ADCertificateTemplate]:
         if len(self.certificatesTemplates):
             return self.certificatesTemplates
-        self.logger.print("Retrive all certificateTemplates")
+        self.logger.print("Retrieve all certificateTemplates")
 
         response = self.search(
             f"CN=Certificate Templates,CN=Public Key Services,CN=Services,{self.configurationNamingContext}",
@@ -290,7 +290,7 @@ class LDAP:
     def getAllGPOs(self) -> List[ADGPO]:
         if len(self.gpos):
             return self.gpos
-        self.logger.print("Retrive all GPOs")
+        self.logger.print("Retrieve all GPOs")
 
         response = self.search(
             f"CN=Policies,CN=System,{self.defaultNamingContext}",
@@ -306,7 +306,7 @@ class LDAP:
     def getAllOUs(self) -> List[ADOU]:
         if len(self.ous):
             return self.ous
-        self.logger.print("Retrive all OUs")
+        self.logger.print("Retrieve all OUs")
 
         response = self.search(
             self.defaultNamingContext,
@@ -322,7 +322,7 @@ class LDAP:
     def getAllContainers(self) -> List[ADContainer]:
         if len(self.containers):
             return self.containers
-        self.logger.print("Retrive all containers")
+        self.logger.print("Retrieve all containers")
 
         response = self.search(
             self.defaultNamingContext,
@@ -347,7 +347,7 @@ class LDAP:
     def getAdminSDHolder(self) -> List[ADAdminSDHolder]:
         if len(self.adminSDHolder):
             return self.adminSDHolder
-        self.logger.print("Retrive adminSDHolder")
+        self.logger.print("Retrieve adminSDHolder")
 
         response = self.search(
             f"CN=AdminSDHolder,CN=System,{self.defaultNamingContext}",
@@ -363,7 +363,7 @@ class LDAP:
     def getSchema(self) -> List[ADSchema]:
         if len(self.schema):
             return self.schema
-        self.logger.print("Retrive Schema")
+        self.logger.print("Retrieve Schema")
 
         # Subtree in case it's not inherant
         response = self.search(
@@ -380,7 +380,7 @@ class LDAP:
     def getAllgMSAs(self) -> List[ADgMSA]:
         if len(self.gMSA):
             return self.gMSA
-        self.logger.print("Retrive all gMSAs")
+        self.logger.print("Retrieve all gMSAs")
         
         response = self.search(
             self.defaultNamingContext,
@@ -396,7 +396,7 @@ class LDAP:
     def getDomain(self) -> ADDomain:
         if self.domain:
             return self.domain
-        self.logger.print("Retrive domain")
+        self.logger.print("Retrieve domain")
 
         response = self.search(
             self.defaultNamingContext,
